@@ -16,7 +16,7 @@ for url in \
 do
 	echo "trying $url"
 	if curl -fsSL "$url" -o "$PACKAGES"; then
-		ROOT=$(dirname "$(dirname "$(dirname "$(dirname "$url")")")")
+		ROOT="${url%%/dists/*}"
 		echo "index ok, root $ROOT"
 		break
 	fi
@@ -50,12 +50,13 @@ fetch() {
 
 fetch proot work/proot
 fetch libtalloc work/talloc || fetch talloc work/talloc
+fetch libandroid-shmem work/shmem || true
 
 mkdir -p out/lib
 
 cp work/proot/data/data/com.termux/files/usr/bin/proot out/lib/proot
 
-find work/talloc work/proot -name 'lib*.so*' -type f -exec cp -a {} out/lib/ \;
+find work/talloc work/shmem work/proot -name 'lib*.so*' -type f -exec cp -a {} out/lib/ \; 2>/dev/null || true
 
 chmod 755 out/lib/proot
 
