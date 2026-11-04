@@ -19,7 +19,7 @@ import java.util.zip.ZipInputStream
  */
 object Setup {
 
-	const val BASE = "https://github.com/lizereride90/botfarm/releases/latest/download"
+	const val BASE = "https://github.com/lizereride90/botfarm/releases/download/userland"
 
 	suspend fun install(log: (String) -> Unit) = withContext(Dispatchers.IO) {
 		Env.rootfs.mkdirs()
@@ -30,7 +30,7 @@ object Setup {
 		Env.tmp.mkdirs()
 
 		if (!File(Env.rootfs, "bin/sh").exists()) {
-			log("downloading userland, 40mb")
+			log("downloading userland")
 			val archive = File(Env.tmp, "rootfs.tar.gz")
 			download("$BASE/rootfs.tar.gz", archive) { done, total ->
 				if (total > 0) log("userland ${done * 100 / total}%")

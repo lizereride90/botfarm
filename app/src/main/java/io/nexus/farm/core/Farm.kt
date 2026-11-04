@@ -241,7 +241,7 @@ object Farm {
 				val code = process.waitFor()
 				append(consoleBuffer, "[done $code]")
 				onDone(code)
-			}.onFailure { append(consoleBuffer, "failed: ${error.message}") }
+			}.onFailure { append(consoleBuffer, "failed: ${it.message}") }
 		}
 	}
 

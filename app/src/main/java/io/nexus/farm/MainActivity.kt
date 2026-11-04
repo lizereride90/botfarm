@@ -190,7 +190,7 @@ private fun Onboarding(onFinished: () -> Unit) {
 				Text("setting up", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Pal.text)
 				Spacer(Modifier.height(10.dp))
 				Text(
-					"one time download of the linux userland. about 40mb, do it on wifi.",
+					"one time download of the linux userland. do it on wifi, it takes a few minutes.",
 					color = Pal.muted,
 				)
 				Spacer(Modifier.height(20.dp))
