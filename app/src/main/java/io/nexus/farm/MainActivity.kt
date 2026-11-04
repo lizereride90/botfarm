@@ -1,6 +1,5 @@
 package io.nexus.farm
 
-import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -8,10 +7,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -99,10 +96,6 @@ private fun Onboarding(onFinished: () -> Unit) {
 	var working by remember { mutableStateOf(false) }
 	var failed by remember { mutableStateOf<String?>(null) }
 
-	val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-		step = 3
-	}
-
 	Column(
 		modifier = Modifier
 			.fillMaxSize()
@@ -176,13 +169,7 @@ private fun Onboarding(onFinished: () -> Unit) {
 					color = Pal.muted,
 				)
 				Spacer(Modifier.height(28.dp))
-				Primary("allow") {
-					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-						notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-					} else {
-						step = 4
-					}
-				}
+				Primary("got it") { step = 4 }
 				Skip("skip") { step = 4 }
 			}
 

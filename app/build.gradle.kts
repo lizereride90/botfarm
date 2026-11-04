@@ -11,7 +11,11 @@ android {
 	defaultConfig {
 		applicationId = "io.nexus.farm"
 		minSdk = 26
-		targetSdk = 34
+		// 28 on purpose. android 10 and up deny execve on files inside the app
+		// data dir for anything targeting 29 or higher, and the whole point of
+		// this app is running binaries we unpacked into filesDir. same reason
+		// termux still ships 28.
+		targetSdk = 28
 		versionCode = 1
 		versionName = "0.1.0"
 		ndk {

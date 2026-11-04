@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,13 +25,23 @@ jobs:
           gradle-version: 8.7
 
       - name: build
-        run: gradle :app:assembleRelease :app:assembleDebug --no-daemon --stacktrace
+        run: gradle :app:assembleRelease :app:assembleDebug --no-daemon
+
+      - name: rename
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/botfarm.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/botfarm-debug.apk
 
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: botfarm-apk
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
+          path: dist/*.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk
+          name: apk
+          body: latest build from main, install botfarm.apk
+          files: dist/*.apk
+          overwrite_files: true

@@ -5,10 +5,8 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.os.Build
-import android.os.IBinder
-import androidx.core.app.NotificationCompat
+import android.os.IBinderimport androidx.core.app.NotificationCompat
 import io.nexus.farm.FarmApp
 import io.nexus.farm.MainActivity
 import io.nexus.farm.R
@@ -26,11 +24,9 @@ class FarmService : Service() {
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 		val notification = build()
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-			startForeground(ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-		} else {
-			startForeground(ID, notification)
-		}
+		// plain call. the typed overload only matters when targeting 34, and we
+		// deliberately target 28 so the userland can be executed at all.
+		startForeground(ID, notification)
 
 		// START_STICKY so android brings us back if it kills the process for memory
 		return START_STICKY

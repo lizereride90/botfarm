@@ -58,6 +58,18 @@ cp work/proot/data/data/com.termux/files/usr/bin/proot out/lib/proot
 
 find work/talloc work/shmem work/proot -name 'lib*.so*' -type f -exec cp -a {} out/lib/ \; 2>/dev/null || true
 
+# the debs carry libfoo.so.1.2.3 plus a symlink to the soname. a plain copy
+# drops the symlink, so recreate the soname as a real file for every lib.
+for f in out/lib/lib*.so.*; do
+	[ -e "$f" ] || continue
+	base=$(basename "$f")
+	if [[ "$base" =~ ^(lib[^.]+\.so)\.([0-9]+) ]]; then
+		cp -f "$f" "out/lib/${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+	fi
+done
+
+chmod 755 out/lib/*
+
 chmod 755 out/lib/proot
 
 echo "proot: $(stat -c %s out/lib/proot) bytes"
