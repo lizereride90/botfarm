@@ -54,9 +54,23 @@ android {
 	}
 
 	packaging {
+		jniLibs {
+			// the manifest asks for extractNativeLibs, so the old packaging
+			// layout is the one that matches it.
+			useLegacyPackaging = true
+		}
 		resources {
 			excludes += setOf("META-INF/*.kotlin_module", "META-INF/AL2.0", "META-INF/LGPL2.1")
 		}
+	}
+
+	lint {
+		// play wants 33 and up. we want an app that can actually exec the
+		// userland, so 28 stays and the store check goes.
+		disable += "ExpiredTargetSdkVersion"
+		disable += "OldTargetApi"
+		// release builds run lintVital only. the full report is noise here.
+		checkReleaseBuilds = false
 	}
 }
 

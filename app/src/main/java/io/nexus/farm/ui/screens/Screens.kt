@@ -276,7 +276,7 @@ fun TerminalScreen() {
 
 @Composable
 fun FilesScreen() {
-	var path by remember { mutableStateOf(Env.root.absolutePath) }
+	var path by remember { mutableStateOf(Env.home.absolutePath) }
 	var entries by remember { mutableStateOf(listOf<File>()) }
 
 	LaunchedEffect(path) {
