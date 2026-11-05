@@ -67,12 +67,15 @@ object Setup {
 		val bashrc = File(Env.home, ".bashrc")
 		if (!bashrc.exists()) {
 			bashrc.writeText(
-				"""
-				# botfarm
-				export PS1='\[\e[38;5;160m\]\w\[\e[0m\] \$ '
-				export PATH=${Env.bin.absolutePath}:\$PATH
-				""".trimIndent() + "\n",
+				"# botfarm\n" +
+					"PS1='\\[\\e[38;5;160m\\]\\w\\[\\e[0m\\] \\$ '\n" +
+					"export PATH=${Env.bin.absolutePath}:\$PATH\n",
 			)
+		}
+
+		val profile = File(Env.home, ".profile")
+		if (!profile.exists()) {
+			profile.writeText("[ -f ~/.bashrc ] && . ~/.bashrc\n")
 		}
 
 		File(Env.home, ".termux").mkdirs()

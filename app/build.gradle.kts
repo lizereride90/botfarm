@@ -34,7 +34,9 @@ android {
 			signingConfig = signingConfigs.getByName("debug")
 		}
 		debug {
-			applicationIdSuffix = ".debug"
+			// no id suffix. the id length is part of the prefix path the userland
+			// binaries were patched to, so both variants have to match it.
+			isMinifyEnabled = false
 		}
 	}
 
