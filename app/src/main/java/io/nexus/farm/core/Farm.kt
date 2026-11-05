@@ -291,8 +291,6 @@ object Farm {
 				val builder = ProcessBuilder(Env.script(command))
 				builder.environment().putAll(Env.environment())
 				builder.environment().putAll(Keys.environment())
-				builder.environment().putAll(server.env)
-				builder.directory(File(server.dir))
 				builder.redirectErrorStream(true)
 				val process = builder.start()
 

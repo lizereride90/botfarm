@@ -190,7 +190,7 @@ fun ServersScreen() {
 
 internal fun statusColor(status: Status): Color = when (status) {
 	Status.RUNNING -> Pal.good
-	Status.STARTING, Status.STOPPING -> Pal.warn
+	Status.STARTING, Status.STOPPING, Status.INSTALLING -> Pal.warn
 	Status.CRASHED -> Pal.bad
 	Status.STOPPED -> Pal.muted
 }
