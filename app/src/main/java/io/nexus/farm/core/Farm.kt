@@ -169,7 +169,7 @@ object Farm {
 					append(server.command)
 				}
 
-				val builder = ProcessBuilder(Env.shellCommand(script))
+				val builder = ProcessBuilder(Env.script(script))
 				builder.environment().putAll(Env.environment())
 				builder.redirectErrorStream(true)
 				val process = builder.start()
@@ -229,7 +229,7 @@ object Farm {
 
 		scope.launch {
 			runCatching {
-				val builder = ProcessBuilder(Env.shellCommand(command))
+				val builder = ProcessBuilder(Env.script(command))
 				builder.environment().putAll(Env.environment())
 				builder.redirectErrorStream(true)
 				val process = builder.start()

@@ -9,7 +9,10 @@ android {
 	compileSdk = 34
 
 	defaultConfig {
-		applicationId = "io.nexus.farm"
+		// 10 characters on purpose. the termux binaries we unpack have
+		// /data/data/com.termux/files/usr compiled in, and this makes our
+		// prefix the exact same length, so the patch is a straight byte swap.
+		applicationId = "io.botfarm"
 		minSdk = 26
 		// 28 on purpose. android 10 and up deny execve on files inside the app
 		// data dir for anything targeting 29 or higher, and the whole point of

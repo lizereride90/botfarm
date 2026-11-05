@@ -107,7 +107,7 @@ private fun Onboarding(onFinished: () -> Unit) {
 				Text("BotFarm", fontSize = 34.sp, fontWeight = FontWeight.Black, color = Pal.text)
 				Spacer(Modifier.height(10.dp))
 				Text(
-					"hosts your discord bots, selfbots and shells inside one app, with a real linux userland underneath and opencode wired in.",
+					"hosts your discord bots, selfbots and shells in one app, on top of a real termux install, with opencode wired in.",
 					color = Pal.muted,
 				)
 				Spacer(Modifier.height(8.dp))
@@ -177,7 +177,7 @@ private fun Onboarding(onFinished: () -> Unit) {
 				Text("setting up", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Pal.text)
 				Spacer(Modifier.height(10.dp))
 				Text(
-					"one time download of the linux userland. do it on wifi, it takes a few minutes.",
+					"one time download of termux, about 60mb. do it on wifi.",
 					color = Pal.muted,
 				)
 				Spacer(Modifier.height(20.dp))

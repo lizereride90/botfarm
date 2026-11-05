@@ -10,52 +10,44 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.zip.ZipInputStream
 
 /**
- * pulls the linux userland and proot down once, then unpacks them into the app
- * directory. everything lands under filesDir so no storage permission is
- * involved and uninstalling takes all of it away.
+ * pulls the termux userland down once and unpacks it into the app directory.
+ * everything lands under filesDir, so no storage permission is involved and
+ * uninstalling takes all of it away.
  */
 object Setup {
 
 	const val BASE = "https://github.com/lizereride90/botfarm/releases/download/userland"
 
 	suspend fun install(log: (String) -> Unit) = withContext(Dispatchers.IO) {
-		Env.rootfs.mkdirs()
-		Env.runtime.mkdirs()
-		Env.prootLibs.mkdirs()
-		Env.projects.mkdirs()
+		Env.prefix.mkdirs()
+		Env.home.mkdirs()
 		Env.logs.mkdirs()
 		Env.tmp.mkdirs()
+		Env.projects.mkdirs()
 
-		if (!File(Env.rootfs, "bin/sh").exists()) {
-			log("downloading userland")
-			val archive = File(Env.tmp, "rootfs.tar.gz")
-			download("$BASE/rootfs.tar.gz", archive) { done, total ->
-				if (total > 0) log("userland ${done * 100 / total}%")
+		if (!Env.ready) {
+			log("downloading termux, about 60mb")
+			val archive = File(Env.tmp, "termux.tar.gz")
+			download("$BASE/termux.tar.gz", archive) { done, total ->
+				if (total > 0) log("termux ${done * 100 / total}%")
 			}
 
-			log("unpacking userland")
-			extractTarGz(archive, Env.rootfs)
+			log("unpacking")
+			extractTarGz(archive, Env.root)
 			archive.delete()
 		} else {
-			log("userland already there")
+			log("termux already there")
 		}
 
-		if (!Env.proot.exists()) {
-			log("downloading proot")
-			val archive = File(Env.tmp, "proot.tar.gz")
-			download("$BASE/proot.tar.gz", archive) { _, _ -> }
-			extractTarGz(archive, Env.runtime)
-			archive.delete()
-			Os.chmod(Env.proot.absolutePath, 0b111101101)
-		} else {
-			log("proot already there")
-		}
+		Os.chmod(Env.sh.absolutePath, 0b111101101)
+
+		writeDefaults()
+		linkStorage()
 
 		log("checking")
-		val probe = ProcessBuilder(Env.shellCommand("echo ok && uname -m"))
+		val probe = ProcessBuilder(Env.script("echo ok && uname -m && \$SHELL -c 'echo shell'"))
 			.redirectErrorStream(true)
 			.apply { environment().putAll(Env.environment()) }
 			.start()
@@ -68,6 +60,30 @@ object Setup {
 		}
 
 		log("ready, $out")
+	}
+
+	/** a couple of files termux expects to exist before a login shell is happy */
+	private fun writeDefaults() {
+		val bashrc = File(Env.home, ".bashrc")
+		if (!bashrc.exists()) {
+			bashrc.writeText(
+				"""
+				# botfarm
+				export PS1='\[\e[38;5;160m\]\w\[\e[0m\] \$ '
+				export PATH=${Env.bin.absolutePath}:\$PATH
+				""".trimIndent() + "\n",
+			)
+		}
+
+		File(Env.home, ".termux").mkdirs()
+	}
+
+	/** termux-setup-storage, but without asking the system for anything new */
+	private fun linkStorage() {
+		val target = Env.storage ?: return
+		val link = File(Env.home, "storage")
+		if (link.exists()) return
+		runCatching { Os.symlink(target.absolutePath, link.absolutePath) }
 	}
 
 	private fun download(url: String, target: File, progress: (Long, Long) -> Unit) {
@@ -103,6 +119,7 @@ object Setup {
 	}
 
 	private fun extractTarGz(archive: File, target: File) {
+		val root = target.canonicalPath
 		TarArchiveInputStream(GzipCompressorInputStream(BufferedInputStream(archive.inputStream()))).use { tar ->
 			while (true) {
 				val entry = tar.nextEntry as? TarArchiveEntry ?: break
@@ -110,7 +127,7 @@ object Setup {
 
 				// nothing may escape the target directory, a tar with ../ in it
 				// would otherwise write into the app's private files
-				if (!out.canonicalPath.startsWith(target.canonicalPath + File.separator)) continue
+				if (!out.canonicalPath.startsWith(root + File.separator)) continue
 
 				when {
 					entry.isDirectory -> out.mkdirs()
@@ -119,6 +136,15 @@ object Setup {
 						out.parentFile?.mkdirs()
 						out.delete()
 						runCatching { Os.symlink(entry.linkName, out.absolutePath) }
+					}
+
+					entry.isLink -> {
+						// hard link, termux ships a few of those for busybox
+						val source = File(target, entry.linkName)
+						out.parentFile?.mkdirs()
+						out.delete()
+						runCatching { Os.link(source.absolutePath, out.absolutePath) }
+							.onFailure { runCatching { source.copyTo(out, overwrite = true) } }
 					}
 
 					else -> {

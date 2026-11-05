@@ -17,30 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/setup-python@v5
         with:
-          platforms: arm64
+          python-version: '3.12'
 
-      - name: rootfs
-        run: |
-          mkdir -p out
-          docker run --rm --platform linux/arm64 \
-            -v "$PWD/out:/out" \
-            -v "$PWD/tools:/tools:ro" \
-            alpine:3.20 \
-            /bin/sh /tools/rootfs.sh
-
-      - name: proot
-        run: |
-          chmod +x tools/proot.sh
-          ./tools/proot.sh
+      - name: termux
+        run: python3 tools/termux.py
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: userland
           name: userland
-          body: alpine + host binaries the app unpacks on first run
-          files: |
-            out/rootfs.tar.gz
-            out/proot.tar.gz
+          body: termux userland the app unpacks on first run
+          files: out/termux.tar.gz
           overwrite_files: true
