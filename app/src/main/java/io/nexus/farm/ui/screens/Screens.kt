@@ -58,6 +58,7 @@ import io.nexus.farm.core.Env
 import io.nexus.farm.core.Farm
 import io.nexus.farm.core.Keys
 import io.nexus.farm.core.OpenCode
+import kotlinx.coroutines.launch
 import io.nexus.farm.core.Status
 import io.nexus.farm.ui.Pal
 import java.io.File
