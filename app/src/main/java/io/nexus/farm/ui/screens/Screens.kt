@@ -322,9 +322,10 @@ fun TerminalScreen() {
 				{ input = it },
 				placeholder = { Text("ls", fontSize = 13.sp) },
 				singleLine = true,
-				modifier = Modifier.weight(1f),
+				modifier = Modifier
+					.weight(1f)
+					.focusRequester(focus),
 				keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-				focusRequester = focus,
 			)
 			Spacer(Modifier.width(8.dp))
 			TextButton(
@@ -491,9 +492,10 @@ fun OpenCodeScreen() {
 					prompt,
 					{ prompt = it },
 					placeholder = { Text("what should i change", fontSize = 13.sp) },
-					modifier = Modifier.weight(1f),
+					modifier = Modifier
+						.weight(1f)
+						.focusRequester(promptFocus),
 					maxLines = 3,
-				focusRequester = promptFocus,
 				)
 				Spacer(Modifier.width(8.dp))
 				TextButton(onClick = {
