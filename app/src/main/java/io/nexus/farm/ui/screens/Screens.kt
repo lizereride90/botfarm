@@ -60,6 +60,8 @@ import io.nexus.farm.core.Keys
 import io.nexus.farm.core.OpenCode
 import kotlinx.coroutines.launch
 import io.nexus.farm.core.Status
+import io.nexus.farm.core.Terminal
+import kotlinx.coroutines.delay
 import io.nexus.farm.ui.Pal
 import java.io.File
 
@@ -72,6 +74,11 @@ fun ServersScreen() {
 
 	var adding by remember { mutableStateOf(false) }
 	var open by remember { mutableStateOf<String?>(null) }
+
+	open?.let { id ->
+		ServerDetail(id) { open = null }
+		return
+	}
 
 	Box(Modifier.fillMaxSize()) {
 		LazyColumn(
@@ -108,7 +115,7 @@ fun ServersScreen() {
 				Card(
 					colors = CardDefaults.cardColors(containerColor = Pal.panel),
 					shape = RoundedCornerShape(14.dp),
-					modifier = Modifier.fillMaxWidth().clickable { open = if (open == server.id) null else server.id },
+					modifier = Modifier.fillMaxWidth().clickable { open = server.id },
 				) {
 					Column(Modifier.padding(14.dp)) {
 						Row(verticalAlignment = Alignment.CenterVertically) {
@@ -146,10 +153,10 @@ fun ServersScreen() {
 							}
 						}
 
-						if (open == server.id && lines.isNotBlank()) {
+						if (lines.isNotBlank()) {
 							Spacer(Modifier.height(8.dp))
 							Text(
-								lines.takeLast(1600),
+								lines.takeLast(240),
 								fontSize = 11.sp,
 								color = Pal.text,
 								fontFamily = FontFamily.Monospace,
@@ -157,7 +164,7 @@ fun ServersScreen() {
 									.fillMaxWidth()
 									.background(Pal.black, RoundedCornerShape(8.dp))
 									.padding(8.dp)
-									.height(180.dp)
+									.height(72.dp)
 									.verticalScroll(rememberScrollState()),
 							)
 						}
@@ -175,13 +182,13 @@ fun ServersScreen() {
 		}
 	}
 
-	if (adding) AddServer { name, command, dir ->
-		Farm.add(name, command, dir)
+	if (adding) AddServer { name, command, dir, install ->
+		if (command.isNotBlank()) Farm.add(name, command, dir, install)
 		adding = false
 	}
 }
 
-private fun statusColor(status: Status): Color = when (status) {
+internal fun statusColor(status: Status): Color = when (status) {
 	Status.RUNNING -> Pal.good
 	Status.STARTING, Status.STOPPING -> Pal.warn
 	Status.CRASHED -> Pal.bad
@@ -189,27 +196,40 @@ private fun statusColor(status: Status): Color = when (status) {
 }
 
 @Composable
-private fun AddServer(onAdd: (String, String, String) -> Unit) {
+private fun AddServer(onAdd: (String, String, String, String) -> Unit) {
 	var name by remember { mutableStateOf("") }
 	var command by remember { mutableStateOf("") }
 	var dir by remember { mutableStateOf("") }
+	var install by remember { mutableStateOf("") }
 
 	AlertDialog(
-		onDismissRequest = { onAdd("", "", "") },
+		onDismissRequest = { onAdd("", "", "", "") },
 		title = { Text("new server") },
 		text = {
-			Column {
+			Column(Modifier.verticalScroll(rememberScrollState())) {
 				OutlinedTextField(name, { name = it }, label = { Text("name") }, singleLine = true)
 				Spacer(Modifier.height(8.dp))
-				OutlinedTextField(dir, { dir = it }, label = { Text("folder, /root/...") }, singleLine = true)
+				OutlinedTextField(command, { command = it }, label = { Text("startup command") }, maxLines = 3)
 				Spacer(Modifier.height(8.dp))
-				OutlinedTextField(command, { command = it }, label = { Text("command") }, maxLines = 4)
+				OutlinedTextField(
+					dir,
+					{ dir = it },
+					label = { Text("folder, blank means projects/<name>") },
+					singleLine = true,
+				)
+				Spacer(Modifier.height(8.dp))
+				OutlinedTextField(
+					install,
+					{ install = it },
+					label = { Text("install command, npm install, pip install -r ...") },
+					maxLines = 2,
+				)
 			}
 		},
 		confirmButton = {
-			TextButton(onClick = { if (command.isNotBlank()) onAdd(name, command, dir) }) { Text("add") }
+			TextButton(onClick = { if (command.isNotBlank()) onAdd(name, command, dir, install) }) { Text("add") }
 		},
-		dismissButton = { TextButton(onClick = { onAdd("", "", "") }) { Text("cancel") } },
+		dismissButton = { TextButton(onClick = { onAdd("", "", "", "") }) { Text("cancel") } },
 	)
 }
 
@@ -217,38 +237,75 @@ private fun AddServer(onAdd: (String, String, String) -> Unit) {
 
 @Composable
 fun TerminalScreen() {
-	val console by Farm.console.collectAsState()
-	var input by remember { mutableStateOf("") }
+	val scope = rememberCoroutineScope()
 	val scroll = rememberScrollState()
 
-	LaunchedEffect(console.length) {
+	var text by remember { mutableStateOf("") }
+	var where by remember { mutableStateOf("") }
+	var live by remember { mutableStateOf(false) }
+	var input by remember { mutableStateOf("") }
+
+	// tmux owns the pty, so a poll is enough and the session survives a
+	// recomposition, a tab switch, even the app being swiped away
+	LaunchedEffect(Unit) {
+		Terminal.ensure()
+		while (true) {
+			val up = Terminal.alive()
+			live = up
+			if (up) {
+				text = Terminal.screen()
+				where = Terminal.where()
+			}
+			delay(700)
+		}
+	}
+
+	LaunchedEffect(text.length) {
 		scroll.animateScrollTo(scroll.maxValue)
 	}
 
 	Column(Modifier.fillMaxSize().padding(12.dp)) {
 		Row(verticalAlignment = Alignment.CenterVertically) {
-			Text("terminal", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
-			Spacer(Modifier.weight(1f))
-			TextButton(onClick = { Farm.clearConsole() }) { Text("clear", fontSize = 12.sp, color = Pal.muted) }
+			Column(Modifier.weight(1f)) {
+				Text("terminal", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
+				Text(
+					if (live) "tmux · $where" else "no session",
+					fontSize = 11.sp,
+					color = if (live) Pal.muted else Pal.warn,
+				)
+			}
+			TextButton(onClick = { scope.launch { Terminal.restart(); text = "" } }) {
+				Text("restart", fontSize = 12.sp, color = Pal.muted)
+			}
 		}
+
+		Spacer(Modifier.height(8.dp))
 
 		Box(
 			Modifier
 				.fillMaxWidth()
 				.weight(1f)
-				.background(Pal.panel, RoundedCornerShape(12.dp))
-				.padding(10.dp),
+				.background(Pal.black, RoundedCornerShape(10.dp))
+				.padding(8.dp),
 		) {
 			Text(
-				console.ifBlank { "type a command below" },
-				fontSize = 12.sp,
-				color = if (console.isBlank()) Pal.muted else Pal.text,
+				text.ifBlank { if (live) "shell is up, type something" else "starting the shell" },
+				fontSize = 11.sp,
+				color = if (text.isBlank()) Pal.muted else Pal.text,
 				fontFamily = FontFamily.Monospace,
 				modifier = Modifier.fillMaxSize().verticalScroll(scroll),
 			)
 		}
 
-		Spacer(Modifier.height(8.dp))
+		Spacer(Modifier.height(6.dp))
+
+		Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+			for ((label, key) in KEYS) {
+				TextButton(onClick = { scope.launch { Terminal.key(key) } }) {
+					Text(label, fontSize = 11.sp, color = Pal.muted)
+				}
+			}
+		}
 
 		Row(verticalAlignment = Alignment.CenterVertically) {
 			OutlinedTextField(
@@ -263,14 +320,24 @@ fun TerminalScreen() {
 			TextButton(
 				onClick = {
 					if (input.isNotBlank()) {
-						Farm.exec(input)
+						val line = input
 						input = ""
+						scope.launch { Terminal.type(line) }
 					}
 				},
-			) { Text("run", fontWeight = FontWeight.SemiBold) }
+			) { Text("send", fontWeight = FontWeight.SemiBold) }
 		}
 	}
 }
+
+private val KEYS = listOf(
+	"ctrl-c" to "C-c",
+	"ctrl-d" to "C-d",
+	"tab" to "Tab",
+	"esc" to "Escape",
+	"up" to "Up",
+	"down" to "Down",
+)
 
 /* -------------------------------------------------------------------- files */
 
