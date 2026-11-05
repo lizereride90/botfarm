@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -41,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +57,7 @@ import io.nexus.farm.FarmApp
 import io.nexus.farm.core.Env
 import io.nexus.farm.core.Farm
 import io.nexus.farm.core.Keys
+import io.nexus.farm.core.OpenCode
 import io.nexus.farm.core.Status
 import io.nexus.farm.ui.Pal
 import java.io.File
@@ -323,11 +327,30 @@ private fun size(file: File): String {
 @Composable
 fun OpenCodeScreen() {
 	val console by Farm.console.collectAsState()
+	val scope = rememberCoroutineScope()
+	val scroll = rememberScrollState()
+
 	var prompt by remember { mutableStateOf("") }
+	var installed by remember { mutableStateOf(OpenCode.installed) }
+	var working by remember { mutableStateOf(false) }
+	var note by remember { mutableStateOf("") }
+
+	LaunchedEffect(console.length) {
+		scroll.animateScrollTo(scroll.maxValue)
+	}
 
 	Column(Modifier.fillMaxSize().padding(12.dp)) {
-		Text("opencode", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
-		Text("runs the cli in the userland, sessions and forks land here", fontSize = 12.sp, color = Pal.muted)
+		Row(verticalAlignment = Alignment.CenterVertically) {
+			Column(Modifier.weight(1f)) {
+				Text("opencode", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
+				Text(
+					if (installed) OpenCode.binary?.name ?: "installed" else "not installed yet",
+					fontSize = 12.sp,
+					color = if (installed) Pal.good else Pal.muted,
+				)
+			}
+			TextButton(onClick = { Farm.clearConsole() }) { Text("clear", fontSize = 12.sp, color = Pal.muted) }
+		}
 
 		Spacer(Modifier.height(10.dp))
 
@@ -339,31 +362,58 @@ fun OpenCodeScreen() {
 				.padding(10.dp),
 		) {
 			Text(
-				console.ifBlank { "ask something" },
+				console.ifBlank { if (installed) "ask something" else "install it once, then talk to it" },
 				fontSize = 12.sp,
 				fontFamily = FontFamily.Monospace,
 				color = if (console.isBlank()) Pal.muted else Pal.text,
-				modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+				modifier = Modifier.fillMaxSize().verticalScroll(scroll),
 			)
+		}
+
+		if (note.isNotBlank()) {
+			Spacer(Modifier.height(8.dp))
+			Text(note, fontSize = 11.sp, color = Pal.muted)
 		}
 
 		Spacer(Modifier.height(8.dp))
 
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			OutlinedTextField(
-				prompt,
-				{ prompt = it },
-				placeholder = { Text("what should i change", fontSize = 13.sp) },
-				modifier = Modifier.weight(1f),
-				maxLines = 3,
-			)
-			Spacer(Modifier.width(8.dp))
-			TextButton(onClick = {
-				if (prompt.isNotBlank()) {
-					Farm.exec("opencode run ${quote(prompt)}")
-					prompt = ""
-				}
-			}) { Text("send", fontWeight = FontWeight.SemiBold) }
+		if (!installed) {
+			Button(
+				onClick = {
+					working = true
+					scope.launch {
+						runCatching { OpenCode.install { line -> note = line } }
+							.onSuccess {
+								installed = true
+								note = "installed, ${it} files touched"
+							}
+							.onFailure { note = it.message ?: "install failed" }
+						working = false
+					}
+				},
+				enabled = !working,
+				modifier = Modifier.fillMaxWidth(),
+				colors = ButtonDefaults.buttonColors(containerColor = Pal.red),
+			) {
+				Text(if (working) "installing…" else "install opencode")
+			}
+		} else {
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				OutlinedTextField(
+					prompt,
+					{ prompt = it },
+					placeholder = { Text("what should i change", fontSize = 13.sp) },
+					modifier = Modifier.weight(1f),
+					maxLines = 3,
+				)
+				Spacer(Modifier.width(8.dp))
+				TextButton(onClick = {
+					if (prompt.isNotBlank()) {
+						Farm.exec("cd ${quote(Env.projects.absolutePath)} && ${OpenCode.binary?.absolutePath ?: "opencode"} run ${quote(prompt)}")
+						prompt = ""
+					}
+				}) { Text("send", fontWeight = FontWeight.SemiBold) }
+			}
 		}
 	}
 }
