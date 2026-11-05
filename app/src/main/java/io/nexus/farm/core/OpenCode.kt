@@ -136,7 +136,8 @@ object OpenCode {
 				val first = input.read(header)
 				if (first < 60) break
 
-				val name = String(header, 0, 16).trim()
+				// ar member names are padded to 16 bytes, directories end with /
+				var name = String(header, 0, 16).trim().removeSuffix("/")
 				val size = String(header, 48, 10).trim().toInt()
 
 				if (name.startsWith("data.tar")) {
@@ -156,9 +157,10 @@ object OpenCode {
 
 	private fun unpack(payload: ByteArray, member: String) {
 		val stream = ByteArrayInputStream(payload)
+		val clean = member.removeSuffix("/")
 		val decompressed = when {
-			member.endsWith(".xz") -> XZCompressorInputStream(stream)
-			member.endsWith(".gz") -> GzipCompressorInputStream(stream)
+			clean.endsWith(".xz") -> XZCompressorInputStream(stream)
+			clean.endsWith(".gz") -> GzipCompressorInputStream(stream)
 			else -> throw IllegalStateException("unsupported member $member")
 		}
 

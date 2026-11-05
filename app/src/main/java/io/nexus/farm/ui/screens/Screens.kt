@@ -47,7 +47,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -244,6 +246,8 @@ fun TerminalScreen() {
 	var where by remember { mutableStateOf("") }
 	var live by remember { mutableStateOf(false) }
 	var input by remember { mutableStateOf("") }
+	val focus = remember { FocusRequester() }
+	val keyboard = LocalSoftwareKeyboardController.current
 
 	// tmux owns the pty, so a poll is enough and the session survives a
 	// recomposition, a tab switch, even the app being swiped away
@@ -262,6 +266,11 @@ fun TerminalScreen() {
 
 	LaunchedEffect(text.length) {
 		scroll.animateScrollTo(scroll.maxValue)
+	}
+
+	LaunchedEffect(Unit) {
+		focus.requestFocus()
+		keyboard?.show()
 	}
 
 	Column(Modifier.fillMaxSize().padding(12.dp)) {
@@ -315,6 +324,7 @@ fun TerminalScreen() {
 				singleLine = true,
 				modifier = Modifier.weight(1f),
 				keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+				focusRequester = focus,
 			)
 			Spacer(Modifier.width(8.dp))
 			TextButton(
@@ -399,12 +409,22 @@ fun OpenCodeScreen() {
 	val scroll = rememberScrollState()
 
 	var prompt by remember { mutableStateOf("") }
+	val promptFocus = remember { FocusRequester() }
+	val keyboard = LocalSoftwareKeyboardController.current
 	var installed by remember { mutableStateOf(OpenCode.installed) }
 	var working by remember { mutableStateOf(false) }
 	var note by remember { mutableStateOf("") }
 
 	LaunchedEffect(console.length) {
 		scroll.animateScrollTo(scroll.maxValue)
+	}
+
+	// when opencode lands, switch to chat and pull up the keyboard
+	LaunchedEffect(installed) {
+		if (installed) {
+			promptFocus.requestFocus()
+			keyboard?.show()
+		}
 	}
 
 	Column(Modifier.fillMaxSize().padding(12.dp)) {
@@ -473,6 +493,7 @@ fun OpenCodeScreen() {
 					placeholder = { Text("what should i change", fontSize = 13.sp) },
 					modifier = Modifier.weight(1f),
 					maxLines = 3,
+				focusRequester = promptFocus,
 				)
 				Spacer(Modifier.width(8.dp))
 				TextButton(onClick = {
