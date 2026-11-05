@@ -69,7 +69,12 @@ object Setup {
 			bashrc.writeText(
 				"# botfarm\n" +
 					"PS1='\\[\\e[38;5;160m\\]\\w\\[\\e[0m\\] \\$ '\n" +
-					"export PATH=${Env.bin.absolutePath}:\$PATH\n",
+					"export PATH=${Env.bin.absolutePath}:\$PATH\n" +
+					"export HOME=${Env.home.absolutePath}\n" +
+					"export TMPDIR=${Env.tmp.absolutePath}\n" +
+					"export LD_LIBRARY_PATH=${Env.prefixLib.absolutePath}\n" +
+					(if (Env.termuxExec.exists()) "export LD_PRELOAD=${Env.termuxExec.absolutePath}\n" else "") +
+					"export TERM=screen-256color\n",
 			)
 		}
 
@@ -78,6 +83,7 @@ object Setup {
 			profile.writeText("[ -f ~/.bashrc ] && . ~/.bashrc\n")
 		}
 
+		Env.tmp.mkdirs()
 		File(Env.home, ".termux").mkdirs()
 	}
 

@@ -58,6 +58,7 @@ object Terminal {
 		Env.tmp.mkdirs()
 
 		if (run(base() + listOf("has-session", "-t", SESSION)).first == 0) {
+			bindEnv()
 			return@withContext true
 		}
 
@@ -75,8 +76,22 @@ object Terminal {
 			run(base() + listOf("kill-server"))
 			run(start).first == 0
 		} else {
+			bindEnv()
 			true
 		}
+	}
+
+	/** tmux strips most env vars from panes, so push the writable ones onto the
+	 *  session. opencode / bun read TMPDIR and would otherwise try the real /tmp. */
+	private suspend fun bindEnv() {
+		val vars = mutableListOf<String>()
+		vars += "TMPDIR=${Env.tmp.absolutePath}"
+		vars += "HOME=${Env.home.absolutePath}"
+		vars += "PATH=${Env.bin.absolutePath}"
+		vars += "LD_LIBRARY_PATH=${Env.prefixLib.absolutePath}"
+		if (Env.termuxExec.exists()) vars += "LD_PRELOAD=${Env.termuxExec.absolutePath}"
+		vars += "TERM=screen-256color"
+		for (v in vars) run(base() + listOf("set-environment", "-t", SESSION, v))
 	}
 
 	suspend fun restart(): Boolean = withContext(Dispatchers.IO) {
