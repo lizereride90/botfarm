@@ -192,6 +192,9 @@ def resolve(packages, wanted):
     return order
 
 
+DEB_ROOT = "data/data/com.termux/files/usr/"
+
+
 def unpack_deb(path, prefix):
     with open(path, "rb") as handle:
         data = handle.read()
@@ -215,26 +218,24 @@ def unpack_deb(path, prefix):
     if payload is None:
         raise SystemExit(f"{path} has no data member")
 
+    # a deb keeps everything under data/data/com.termux/files/usr. rewrite the
+    # member names as we go and unpack straight into the prefix, so there is no
+    # middle directory to move afterwards.
     with tarfile.open(fileobj=io.BytesIO(payload), mode="r:*") as archive:
-        members = archive.getmembers()
-        archive.extractall(path=WORK, members=members, filter="fully_trusted")
+        members = []
+        for member in archive.getmembers():
+            name = member.name
+            while name.startswith("./"):
+                name = name[2:]
+            if not name.startswith(DEB_ROOT):
+                continue
+            member.name = name[len(DEB_ROOT):] or "."
+            if member.linkname and member.linkname.startswith(DEB_ROOT):
+                member.linkname = member.linkname[len(DEB_ROOT):]
+            members.append(member)
 
-    source = os.path.join(WORK, "data", "data", "com", "termux", "files", "usr")
-    if not os.path.isdir(source):
-        return
-
-    for root, directories, files in os.walk(source):
-        relative = os.path.relpath(root, source)
-        destination = os.path.join(prefix, relative) if relative != "." else prefix
-        os.makedirs(destination, exist_ok=True)
-        for entry in files + directories:
-            src = os.path.join(root, entry)
-            dst = os.path.join(destination, entry)
-            if os.path.lexists(dst):
-                os.remove(dst) if not os.path.isdir(dst) or os.path.islink(dst) else None
-            shutil.move(src, dst)
-
-    shutil.rmtree(os.path.join(WORK, "data"), ignore_errors=True)
+        os.makedirs(prefix, exist_ok=True)
+        archive.extractall(path=prefix, members=members, filter="fully_trusted")
 
 
 def install_packages(packages):

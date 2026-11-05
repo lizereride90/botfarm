@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import io.nexus.farm.FarmApp
 import io.nexus.farm.core.Env
 import io.nexus.farm.core.Farm
+import io.nexus.farm.core.Keys
 import io.nexus.farm.core.Status
 import io.nexus.farm.ui.Pal
 import java.io.File
@@ -406,6 +408,99 @@ fun SettingsScreen(app: FarmApp) {
 
 		Spacer(Modifier.height(12.dp))
 
+		ApiKeys()
+
+		Spacer(Modifier.height(12.dp))
+
 		Text("botfarm 0.1.0", fontSize = 11.sp, color = Pal.muted)
 	}
+}
+
+@Composable
+private fun ApiKeys() {
+	var version by remember { mutableIntStateOf(0) }
+	var adding by remember { mutableStateOf<String?>(null) }
+
+	val keys = remember(version) { Keys.all() }
+
+	Column(
+		Modifier
+			.fillMaxWidth()
+			.border(1.dp, Pal.line, RoundedCornerShape(12.dp))
+			.padding(14.dp),
+	) {
+		Text("api keys", color = Pal.text, fontWeight = FontWeight.SemiBold)
+		Text(
+			"a pool per provider. when one key reports a limit it rests for a few hours and the next one takes over, and the bot gets restarted on it.",
+			fontSize = 11.sp,
+			color = Pal.muted,
+		)
+
+		for ((provider, variable) in Keys.providers) {
+			val mine = keys.filter { it.provider == provider }
+
+			Spacer(Modifier.height(10.dp))
+
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				Column(Modifier.weight(1f)) {
+					Text(provider, color = Pal.text, fontSize = 13.sp)
+					Text(
+						"${mine.size} key${if (mine.size == 1) "" else "s"} · $variable",
+						fontSize = 10.sp,
+						color = Pal.muted,
+					)
+				}
+				IconButton(onClick = { adding = provider }) {
+					Icon(Icons.Filled.Add, "add key", tint = Pal.muted)
+				}
+			}
+
+			mine.forEach { key ->
+				Row(verticalAlignment = Alignment.CenterVertically) {
+					Text(mask(key.value), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Pal.muted)
+					Spacer(Modifier.weight(1f))
+					Text(key.state, fontSize = 10.sp, color = if (key.cooling) Pal.warn else Pal.good)
+					IconButton(onClick = { Keys.remove(key.id); version++ }) {
+						Icon(Icons.Filled.Delete, "delete key", tint = Pal.muted)
+					}
+				}
+			}
+		}
+	}
+
+	adding?.let { provider ->
+		AddKey(provider) { value ->
+			Keys.add(provider, value)
+			adding = null
+			version++
+		}
+	}
+}
+
+private fun mask(value: String): String = when {
+	value.length <= 10 -> value.take(4) + "…"
+	else -> value.take(6) + "…" + value.takeLast(4)
+}
+
+@Composable
+private fun AddKey(provider: String, onAdd: (String) -> Unit) {
+	var value by remember { mutableStateOf("") }
+
+	AlertDialog(
+		onDismissRequest = { onAdd("") },
+		title = { Text("$provider key") },
+		text = {
+			OutlinedTextField(
+				value,
+				{ value = it },
+				label = { Text("api key") },
+				singleLine = true,
+				fontFamily = FontFamily.Monospace,
+			)
+		},
+		confirmButton = {
+			TextButton(onClick = { if (value.isNotBlank()) onAdd(value) }) { Text("add") }
+		},
+		dismissButton = { TextButton(onClick = { onAdd("") }) { Text("cancel") } },
+	)
 }

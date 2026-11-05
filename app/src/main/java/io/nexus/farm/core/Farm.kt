@@ -171,6 +171,7 @@ object Farm {
 
 				val builder = ProcessBuilder(Env.script(script))
 				builder.environment().putAll(Env.environment())
+				builder.environment().putAll(Keys.environment())
 				builder.redirectErrorStream(true)
 				val process = builder.start()
 
@@ -178,7 +179,18 @@ object Farm {
 				update(id) { it.copy(status = Status.RUNNING, pid = processPid(process), startedAt = System.currentTimeMillis()) }
 
 				process.inputStream.bufferedReader().useLines { lines ->
-					for (line in lines) append(buffer, line)
+					for (line in lines) {
+						append(buffer, line)
+
+						// a limit means this key is done for now. park it and let
+						// the restart pick up the next one in the pool.
+						val rotated = Keys.rotate(line)
+						if (rotated != null) {
+							append(buffer, "key for $rotated is resting, restarting")
+							process.destroy()
+							break
+						}
+					}
 				}
 
 				val code = process.waitFor()
@@ -231,6 +243,7 @@ object Farm {
 			runCatching {
 				val builder = ProcessBuilder(Env.script(command))
 				builder.environment().putAll(Env.environment())
+				builder.environment().putAll(Keys.environment())
 				builder.redirectErrorStream(true)
 				val process = builder.start()
 

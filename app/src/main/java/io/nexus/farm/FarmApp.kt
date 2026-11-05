@@ -19,6 +19,7 @@ class FarmApp : Application() {
 		Env.bind(this)
 		prefs = Prefs(this)
 		Farm.load()
+		Keys.load()
 
 		val manager = getSystemService<NotificationManager>() ?: return
 		val channel = NotificationChannel(
