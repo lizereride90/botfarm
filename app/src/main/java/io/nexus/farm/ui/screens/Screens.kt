@@ -495,7 +495,6 @@ private fun AddKey(provider: String, onAdd: (String) -> Unit) {
 				{ value = it },
 				label = { Text("api key") },
 				singleLine = true,
-				fontFamily = FontFamily.Monospace,
 			)
 		},
 		confirmButton = {

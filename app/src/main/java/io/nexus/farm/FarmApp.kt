@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import androidx.core.content.getSystemService
 import io.nexus.farm.core.Env
 import io.nexus.farm.core.Farm
+import io.nexus.farm.core.Keys
 import io.nexus.farm.core.Prefs
 
 class FarmApp : Application() {
