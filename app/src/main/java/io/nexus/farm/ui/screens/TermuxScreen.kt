@@ -1,6 +1,7 @@
 package io.nexus.farm.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -9,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.androidViewLifecycleAware
 import com.termux.terminal.TerminalSession
 import com.termux.view.TerminalView
 import io.nexus.farm.core.BotFarmTerminalSessionClient
@@ -37,7 +37,6 @@ fun TermuxScreen(): TerminalSession? {
 		BotFarmTerminalSessionClient()
 	}
 
-	// create the terminal view and hold a reference
 	var viewRef by remember { mutableStateOf<TerminalView?>(null) }
 
 	androidx.compose.ui.platform.AndroidView(
@@ -50,7 +49,6 @@ fun TermuxScreen(): TerminalSession? {
 		modifier = Modifier.fillMaxSize(),
 	)
 
-	// create and attach the session once the view exists
 	DisposableEffect(viewRef, viewClient, sessionClient) {
 		if (viewRef == null) return@DisposableEffect
 

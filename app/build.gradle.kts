@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-	namespace = "io.botfarm"
+	namespace = "io.nexus.farm"
 	compileSdk = 36
 
 	defaultConfig {

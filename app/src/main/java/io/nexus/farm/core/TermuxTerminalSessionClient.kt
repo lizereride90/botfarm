@@ -16,7 +16,7 @@ class BotFarmTerminalSessionClient(
 	private val onTextChanged: (TerminalSession) -> Unit = {},
 	private val onTitleChanged: (TerminalSession) -> Unit = {},
 	private val onSessionFinished: (TerminalSession) -> Unit = {},
-	private val onShellPid: (TerminalSession, Int) -> Unit = {},
+	private val onShellPid: (TerminalSession, Int) -> Unit = { _, _ -> },
 ) : TerminalSessionClient {
 
 	override fun onTextChanged(@NonNull changedSession: TerminalSession) {
