@@ -6,7 +6,7 @@ plugins {
 
 android {
 	namespace = "io.nexus.farm"
-	compileSdk = 36
+	compileSdk = 34
 
 	defaultConfig {
 		// 10 characters on purpose. the termux binaries we unpack have
@@ -43,7 +43,6 @@ android {
 	compileOptions {
 		sourceCompatibility = JavaVersion.VERSION_17
 		targetCompatibility = JavaVersion.VERSION_17
-		isCoreLibraryDesugaringEnabled = true
 	}
 
 	kotlinOptions {
@@ -71,13 +70,14 @@ android {
 }
 
 dependencies {
-	// compose 1.6.8 - androidview lives in androidx.compose.ui.platform.AndroidView
-	val composeUiVersion = "1.6.8"
-	implementation("androidx.compose.ui:ui:$composeUiVersion")
-	implementation("androidx.compose.ui:ui-graphics:$composeUiVersion")
-	implementation("androidx.compose.material3:material3:1.3.1")
-	implementation("androidx.compose.material:material-icons-extended:1.3.1")
-	implementation("androidx.activity:activity-compose:1.6.1")
+	val compose = platform("androidx.compose:compose-bom:2024.09.00")
+
+	implementation(compose)
+	implementation("androidx.compose.ui:ui")
+	implementation("androidx.compose.ui:ui-graphics")
+	implementation("androidx.compose.material3:material3")
+	implementation("androidx.compose.material:material-icons-extended")
+	implementation("androidx.activity:activity-compose:1.9.2")
 	implementation("androidx.core:core-ktx:1.13.1")
 	implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 	implementation("androidx.lifecycle:lifecycle-service:2.8.6")
@@ -85,10 +85,8 @@ dependencies {
 	implementation("org.apache.commons:commons-compress:1.26.2")
 	implementation("org.tukaani:xz:1.9")
 
-	// embedded termux terminal emulator + view
-	implementation(project(":third_party:termux-app:terminal-view"))
-
 	coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
 
-	debugImplementation("androidx.compose.ui:ui-tooling:$composeUiVersion")
+	debugImplementation(compose)
+	debugImplementation("androidx.compose.ui:ui-tooling")
 }
