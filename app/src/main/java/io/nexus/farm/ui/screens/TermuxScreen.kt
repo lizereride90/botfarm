@@ -1,7 +1,7 @@
 package io.nexus.farm.ui.screens
 
 import android.content.Context
-import androidx.compose.foundation.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.AndroidView
 import androidx.compose.ui.platform.LocalContext
 import com.termux.terminal.TerminalSession
 import com.termux.view.TerminalView
@@ -39,7 +40,7 @@ fun TermuxScreen(): TerminalSession? {
 
 	var viewRef by remember { mutableStateOf<TerminalView?>(null) }
 
-	androidx.compose.ui.platform.AndroidView(
+	AndroidView(
 		factory = { ctx ->
 			TerminalView(ctx, null).also { viewRef = it }
 		},
