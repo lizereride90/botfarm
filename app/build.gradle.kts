@@ -56,8 +56,6 @@ android {
 
 	packaging {
 		jniLibs {
-			// the manifest asks for extractNativeLibs, so the old packaging
-			// layout is the one that matches it.
 			useLegacyPackaging = true
 		}
 		resources {
@@ -66,24 +64,20 @@ android {
 	}
 
 	lint {
-		// play wants 33 and up. we want an app that can actually exec the
-		// userland, so 28 stays and the store check goes.
 		disable += "ExpiredTargetSdkVersion"
 		disable += "OldTargetApi"
-		// release builds run lintVital only. the full report is noise here.
 		checkReleaseBuilds = false
 	}
 }
 
 dependencies {
-	val compose = platform("androidx.compose:compose-bom:2024.09.00")
-
-	implementation(compose)
-	implementation("androidx.compose.ui:ui")
-	implementation("androidx.compose.ui:ui-graphics")
-	implementation("androidx.compose.ui:ui-platform:1.7.0")
-	implementation("androidx.compose.material3:material3")
-	implementation("androidx.compose.material:material-icons-extended")
+	// compose 1.6.8 - androidview lives in androidx.compose.ui.platform.AndroidView
+	val composeUiVersion = "1.6.8"
+	implementation("androidx.compose.ui:ui:$composeUiVersion")
+	implementation("androidx.compose.ui:ui-graphics:$composeUiVersion")
+	implementation("androidx.compose.ui:ui-platform:$composeUiVersion")
+	implementation("androidx.compose.material3:material3:1.3.1")
+	implementation("androidx.compose.material:material-icons-extended:1.3.1")
 	implementation("androidx.activity:activity-compose:1.9.2")
 	implementation("androidx.core:core-ktx:1.13.1")
 	implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
@@ -97,6 +91,5 @@ dependencies {
 
 	coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
 
-	debugImplementation(compose)
-	debugImplementation("androidx.compose.ui:ui-tooling")
+	debugImplementation("androidx.compose.ui:ui-tooling:$composeUiVersion")
 }
