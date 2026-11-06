@@ -51,22 +51,22 @@ fun TermuxScreen(): TerminalSession? {
 	)
 
 	DisposableEffect(viewRef, viewClient, sessionClient) {
-		if (viewRef == null) return@DisposableEffect
+		if (viewRef != null) {
+			val env = Env.environment()
+			val envArray = env.entries.map { "${it.key}=${it.value}" }.toTypedArray()
 
-		val env = Env.environment()
-		val envArray = env.entries.map { "${it.key}=${it.value}" }.toTypedArray()
+			val session = TerminalSession(
+				Env.bash.absolutePath,
+				Env.home.absolutePath,
+				arrayOf("bash", "-l"),
+				envArray,
+				5000,
+				sessionClient,
+			)
 
-		val session = TerminalSession(
-			Env.bash.absolutePath,
-			Env.home.absolutePath,
-			arrayOf("bash", "-l"),
-			envArray,
-			5000,
-			sessionClient,
-		)
-
-		sessionRef = session
-		viewRef?.attachSession(session)
+			sessionRef = session
+			viewRef?.attachSession(session)
+		}
 
 		onDispose {
 			sessionRef?.finishIfRunning()
