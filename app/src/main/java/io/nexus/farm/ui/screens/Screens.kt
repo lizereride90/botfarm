@@ -68,6 +68,174 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
+/* ------------------------------------------------------------------ servers */
+
+@Composable
+fun ServersScreen() {
+	val servers by Farm.servers.collectAsState()
+	val logs by Farm.logs.collectAsState()
+
+	var adding by remember { mutableStateOf(false) }
+	var open by remember { mutableStateOf<String?>(null) }
+
+	open?.let { id ->
+		ServerDetail(id) { open = null }
+		return
+	}
+
+	Box(Modifier.fillMaxSize()) {
+		LazyColumn(
+			modifier = Modifier.fillMaxSize(),
+			contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 16.dp, 16.dp, 96.dp),
+			verticalArrangement = Arrangement.spacedBy(10.dp),
+		) {
+			item {
+				Row(verticalAlignment = Alignment.CenterVertically) {
+					Column(Modifier.weight(1f)) {
+						Text("servers", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
+						Text("${servers.count { it.status == Status.RUNNING }} running", fontSize = 12.sp, color = Pal.muted)
+					}
+				}
+				Spacer(Modifier.height(6.dp))
+			}
+
+			if (servers.isEmpty()) {
+				item {
+					Box(
+						Modifier
+							.fillMaxWidth()
+							.padding(top = 80.dp),
+						contentAlignment = Alignment.Center,
+					) {
+						Text("nothing added yet. tap plus.", color = Pal.muted, fontSize = 13.sp)
+					}
+				}
+			}
+
+			items(servers, key = { it.id }) { server ->
+				val lines = logs[server.id] ?: ""
+
+				Card(
+					colors = CardDefaults.cardColors(containerColor = Pal.panel),
+					shape = RoundedCornerShape(14.dp),
+					modifier = Modifier.fillMaxWidth().clickable { open = server.id },
+				) {
+					Column(Modifier.padding(14.dp)) {
+						Row(verticalAlignment = Alignment.CenterVertically) {
+							Box(
+								Modifier.size(8.dp).background(statusColor(server.status), CircleShape),
+							)
+							Spacer(Modifier.width(8.dp))
+							Text(server.name, fontWeight = FontWeight.SemiBold, color = Pal.text)
+							Spacer(Modifier.weight(1f))
+							Text(server.status.name.lowercase(), fontSize = 11.sp, color = statusColor(server.status))
+						}
+
+						Spacer(Modifier.height(6.dp))
+						Text(server.command, fontSize = 12.sp, color = Pal.muted, fontFamily = FontFamily.Monospace)
+
+						Spacer(Modifier.height(10.dp))
+						Row(verticalAlignment = Alignment.CenterVertically) {
+							when (server.status) {
+								Status.RUNNING, Status.STARTING -> {
+									AssistChip(onClick = { Farm.stop(server.id) }, label = { Text("stop", fontSize = 12.sp) })
+									Spacer(Modifier.width(6.dp))
+									AssistChip(onClick = { Farm.kill(server.id) }, label = { Text("kill", fontSize = 12.sp) })
+								}
+								Status.STOPPING -> {
+									AssistChip(onClick = { Farm.kill(server.id) }, label = { Text("force", fontSize = 12.sp) })
+								}
+								else -> {
+									AssistChip(onClick = { Farm.start(server.id) }, label = { Text("start", fontSize = 12.sp) })
+								}
+							}
+
+							Spacer(Modifier.weight(1f))
+							IconButton(onClick = { Farm.remove(server.id) }) {
+								Icon(Icons.Filled.Delete, "delete", tint = Pal.muted)
+							}
+						}
+
+						if (lines.isNotBlank()) {
+							Spacer(Modifier.height(8.dp))
+							Text(
+								lines.takeLast(240),
+								fontSize = 11.sp,
+								color = Pal.text,
+								fontFamily = FontFamily.Monospace,
+								modifier = Modifier
+									.fillMaxWidth()
+									.background(Pal.black, RoundedCornerShape(8.dp))
+									.padding(8.dp)
+									.height(72.dp)
+									.verticalScroll(rememberScrollState()),
+							)
+						}
+					}
+				}
+			}
+		}
+
+		FloatingActionButton(
+			onClick = { adding = true },
+			containerColor = Pal.red,
+			modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+		) {
+			Icon(Icons.Filled.Add, "add")
+		}
+	}
+
+	if (adding) AddServer { name, command, dir, install ->
+		if (command.isNotBlank()) Farm.add(name, command, dir, install)
+		adding = false
+	}
+}
+
+internal fun statusColor(status: Status): Color = when (status) {
+	Status.RUNNING -> Pal.good
+	Status.STARTING, Status.STOPPING, Status.INSTALLING -> Pal.warn
+	Status.CRASHED -> Pal.bad
+	Status.STOPPED -> Pal.muted
+}
+
+@Composable
+private fun AddServer(onAdd: (String, String, String, String) -> Unit) {
+	var name by remember { mutableStateOf("") }
+	var command by remember { mutableStateOf("") }
+	var dir by remember { mutableStateOf("") }
+	var install by remember { mutableStateOf("") }
+
+	AlertDialog(
+		onDismissRequest = { onAdd("", "", "", "") },
+		title = { Text("new server") },
+		text = {
+			Column(Modifier.verticalScroll(rememberScrollState())) {
+				OutlinedTextField(name, { name = it }, label = { Text("name") }, singleLine = true)
+				Spacer(Modifier.height(8.dp))
+				OutlinedTextField(command, { command = it }, label = { Text("startup command") }, maxLines = 3)
+				Spacer(Modifier.height(8.dp))
+				OutlinedTextField(
+					dir,
+					{ dir = it },
+					label = { Text("folder, blank means projects/<name>") },
+					singleLine = true,
+				)
+				Spacer(Modifier.height(8.dp))
+				OutlinedTextField(
+					install,
+					{ install = it },
+					label = { Text("install command, npm install, pip install -r ...") },
+					maxLines = 2,
+				)
+			}
+		},
+		confirmButton = {
+			TextButton(onClick = { if (command.isNotBlank()) onAdd(name, command, dir, install) }) { Text("add") }
+		},
+		dismissButton = { TextButton(onClick = { onAdd("", "", "", "") }) { Text("cancel") } },
+	)
+}
+
 /* ----------------------------------------------------------------- terminal */
 
 @Composable
@@ -184,3 +352,236 @@ private val KEYS = listOf(
 )
 
 /* -------------------------------------------------------------------- files */
+
+@Composable
+fun FilesScreen() {
+	var path by remember { mutableStateOf(Env.home.absolutePath) }
+	var entries by remember { mutableStateOf(listOf<File>()) }
+
+	Column(Modifier.fillMaxSize()) {
+		Row(verticalAlignment = Alignment.CenterVertically) {
+			Column(Modifier.weight(1f)) {
+				Text(
+					path.removePrefix(Env.root.absolutePath).ifBlank { "/" },
+					fontSize = 11.sp,
+					color = Pal.muted,
+					fontFamily = FontFamily.Monospace,
+				)
+				Text("${entries.size} entries", fontSize = 10.sp, color = Pal.muted)
+			}
+		}
+
+		LazyColumn(Modifier.fillMaxSize()) {
+			items(entries, key = { it.absolutePath }) { file ->
+				Row(
+					Modifier
+						.fillMaxWidth()
+						.clickable {
+							if (file.isDirectory) path = file.absolutePath
+						}
+						.padding(vertical = 9.dp),
+					verticalAlignment = Alignment.CenterVertically,
+				) {
+					Text(
+						if (file.isDirectory) "› ${file.name}" else file.name,
+						fontSize = 12.sp,
+						color = if (file.isDirectory) Pal.text else Pal.muted,
+						fontFamily = FontFamily.Monospace,
+						modifier = Modifier.weight(1f),
+					)
+					if (!file.isDirectory) Text(size(file.length()), fontSize = 10.sp, color = Pal.muted)
+				}
+			}
+		}
+	}
+}
+
+private fun size(bytes: Long): String = when {
+	bytes < 1024 -> "${bytes}b"
+	bytes < 1024 * 1024 -> "${bytes / 1024}k"
+	else -> "${bytes / (1024 * 1024)}m"
+}
+
+/* ----------------------------------------------------------------- opencode */
+
+@Composable
+fun OpenCodeScreen() {
+	val console by Farm.console.collectAsState()
+	val scope = rememberCoroutineScope()
+	val scroll = rememberScrollState()
+
+	var prompt by remember { mutableStateOf("") }
+	val promptFocus = remember { FocusRequester() }
+	val keyboard = LocalSoftwareKeyboardController.current
+	var installed by remember { mutableStateOf(OpenCode.installed) }
+	var working by remember { mutableStateOf(false) }
+	var note by remember { mutableStateOf("") }
+
+	LaunchedEffect(console.length) {
+		scroll.animateScrollTo(scroll.maxValue)
+	}
+
+	// when opencode lands, switch to chat and pull up the keyboard
+	LaunchedEffect(installed) {
+		if (installed) {
+			promptFocus.requestFocus()
+			keyboard?.show()
+		}
+	}
+
+	Column(Modifier.fillMaxSize().padding(12.dp)) {
+		Row(verticalAlignment = Alignment.CenterVertically) {
+			Column(Modifier.weight(1f)) {
+				Text("opencode", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
+				Text(
+					if (installed) OpenCode.binary?.name ?: "installed" else "not installed yet",
+					fontSize = 12.sp,
+					color = if (installed) Pal.good else Pal.muted,
+				)
+			}
+			TextButton(onClick = { Farm.clearConsole() }) { Text("clear", fontSize = 12.sp, color = Pal.muted) }
+		}
+
+		Spacer(Modifier.height(10.dp))
+
+		Box(
+			Modifier
+				.weight(1f)
+				.fillMaxWidth()
+				.background(Pal.panel, RoundedCornerShape(12.dp))
+				.padding(10.dp),
+		) {
+			Text(
+				console.ifBlank { if (installed) "ask something" else "install it once, then talk to it" },
+				fontSize = 12.sp,
+				fontFamily = FontFamily.Monospace,
+				color = if (console.isBlank()) Pal.muted else Pal.text,
+				modifier = Modifier.fillMaxSize().verticalScroll(scroll),
+			)
+		}
+
+		if (note.isNotBlank()) {
+			Spacer(Modifier.height(8.dp))
+			Text(note, fontSize = 11.sp, color = Pal.muted)
+		}
+
+		Spacer(Modifier.height(8.dp))
+
+		if (!installed) {
+			Button(
+				onClick = {
+					working = true
+					scope.launch {
+						runCatching { OpenCode.install { line -> note = line } }
+							.onSuccess {
+								installed = true
+								note = "installed, ${it} files touched"
+							}
+							.onFailure { note = it.message ?: "install failed" }
+						working = false
+					}
+				},
+				enabled = !working,
+				modifier = Modifier.fillMaxWidth(),
+				colors = ButtonDefaults.buttonColors(containerColor = Pal.red),
+			) {
+				Text(if (working) "installing…" else "install opencode")
+			}
+		} else {
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				OutlinedTextField(
+					prompt,
+					{ prompt = it },
+					placeholder = { Text("what should i change", fontSize = 13.sp) },
+					modifier = Modifier
+						.weight(1f)
+						.focusRequester(promptFocus),
+					maxLines = 3,
+				)
+				Spacer(Modifier.width(8.dp))
+				TextButton(onClick = {
+					if (prompt.isNotBlank()) {
+						Farm.exec("cd ${quote(Env.projects.absolutePath)} && ${OpenCode.binary?.absolutePath ?: "opencode"} run ${quote(prompt)}")
+						prompt = ""
+					}
+				}) { Text("send", fontWeight = FontWeight.SemiBold) }
+			}
+		}
+	}
+}
+
+private fun quote(text: String): String = "'${text.replace("'", "'\\''")}'"
+
+/* ------------------------------------------------------------------ settings */
+
+@Composable
+fun SettingsScreen(app: FarmApp) {
+	Column(Modifier.fillMaxSize().padding(12.dp)) {
+		Text("settings", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
+
+		Spacer(Modifier.height(16.dp))
+
+		Text("foreground service", fontSize = 14.sp, color = Pal.text, fontWeight = FontWeight.SemiBold)
+		Text("keeps bots and the terminal alive after you swipe the app away.", fontSize = 12.sp, color = Pal.muted)
+		Spacer(Modifier.height(8.dp))
+
+		Button(
+			onClick = { app.startService() },
+			colors = ButtonDefaults.buttonColors(containerColor = Pal.red),
+			modifier = Modifier.fillMaxWidth(),
+		) {
+			Text("start foreground service")
+		}
+
+		Spacer(Modifier.height(24.dp))
+
+		Text("api keys", fontSize = 14.sp, color = Pal.text, fontWeight = FontWeight.SemiBold)
+		Text("add a pool per provider. when one key hits a limit it rests and the next takes over.", fontSize = 12.sp, color = Pal.muted)
+		Spacer(Modifier.height(8.dp))
+
+		val keys = remember { Keys.all() }
+
+		for ((provider, variable) in Keys.providers) {
+			val mine = keys.filter { it.provider == provider }
+
+			Spacer(Modifier.height(10.dp))
+
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				Column(Modifier.weight(1f)) {
+					Text(provider, color = Pal.text, fontSize = 13.sp)
+					Text(
+						"${mine.size} key${if (mine.size == 1) "" else "s"} · $variable",
+						fontSize = 10.sp,
+						color = Pal.muted,
+					)
+				}
+				IconButton(onClick = { /* add key */ }) {
+					Icon(Icons.Filled.Add, "add key", tint = Pal.muted)
+				}
+			}
+
+			mine.forEach { key ->
+				Row(verticalAlignment = Alignment.CenterVertically) {
+					Text(
+						when {
+							key.value.length <= 10 -> key.value.take(4) + "…"
+							else -> key.value.take(6) + "…" + key.value.takeLast(4)
+						},
+						fontSize = 11.sp,
+						fontFamily = FontFamily.Monospace,
+						color = Pal.muted,
+					)
+					Spacer(Modifier.weight(1f))
+					Text(key.state, fontSize = 10.sp, color = if (key.cooling) Pal.warn else Pal.good)
+					IconButton(onClick = { Keys.remove(key.id) }) {
+						Icon(Icons.Filled.Delete, "delete key", tint = Pal.muted)
+					}
+				}
+			}
+		}
+
+		Spacer(Modifier.height(24.dp))
+
+		Text("botfarm 0.1.0", fontSize = 11.sp, color = Pal.muted)
+	}
+}
