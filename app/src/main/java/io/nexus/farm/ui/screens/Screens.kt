@@ -555,7 +555,7 @@ fun SettingsScreen(app: FarmApp) {
 						color = Pal.muted,
 					)
 				}
-				IconButton(onClick = { /* add key */ }) {
+				IconButton(onClick = { }) {
 					Icon(Icons.Filled.Add, "add key", tint = Pal.muted)
 				}
 			}
