@@ -43,7 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,8 +62,6 @@ import io.nexus.farm.core.Keys
 import io.nexus.farm.core.OpenCode
 import kotlinx.coroutines.launch
 import io.nexus.farm.core.Status
-import io.nexus.farm.core.Terminal
-import kotlinx.coroutines.delay
 import io.nexus.farm.ui.Pal
 import java.io.File
 
@@ -240,116 +237,37 @@ private fun AddServer(onAdd: (String, String, String, String) -> Unit) {
 
 @Composable
 fun TerminalScreen() {
-	val scope = rememberCoroutineScope()
-	val scroll = rememberScrollState()
-
-	var text by remember { mutableStateOf("") }
-	var where by remember { mutableStateOf("") }
-	var live by remember { mutableStateOf(false) }
-	var input by remember { mutableStateOf("") }
-	val focus = remember { FocusRequester() }
-	val keyboard = LocalSoftwareKeyboardController.current
-
-	// tmux owns the pty, so a poll is enough and the session survives a
-	// recomposition, a tab switch, even the app being swiped away
-	LaunchedEffect(Unit) {
-		Terminal.ensure()
-		while (true) {
-			val up = Terminal.alive()
-			live = up
-			if (up) {
-				text = Terminal.screen()
-				where = Terminal.where()
-			}
-			delay(700)
-		}
-	}
-
-	LaunchedEffect(text.length) {
-		scroll.animateScrollTo(scroll.maxValue)
-	}
-
-	LaunchedEffect(Unit) {
-		focus.requestFocus()
-		keyboard?.show()
-	}
+	val session = TermuxScreen()
 
 	Column(Modifier.fillMaxSize().padding(12.dp)) {
 		Row(verticalAlignment = Alignment.CenterVertically) {
 			Column(Modifier.weight(1f)) {
 				Text("terminal", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Pal.text)
 				Text(
-					if (live) "tmux · $where" else "no session",
+					if (session != null) "termux session · ${
+						Env.home.absolutePath.removePrefix(Env.root.absolutePath).ifBlank { "/" }
+					}" else "starting session",
 					fontSize = 11.sp,
-					color = if (live) Pal.muted else Pal.warn,
+					color = if (session != null) Pal.muted else Pal.warn,
 				)
-			}
-			TextButton(onClick = { scope.launch { Terminal.restart(); text = "" } }) {
-				Text("restart", fontSize = 12.sp, color = Pal.muted)
 			}
 		}
 
 		Spacer(Modifier.height(8.dp))
 
+		// TerminalView fills the rest of the screen. it handles input through
+		// its own InputConnection (soft keyboard) and key events (hardware
+		// keyboard). no separate input field needed.
 		Box(
 			Modifier
 				.fillMaxWidth()
 				.weight(1f)
-				.background(Pal.black, RoundedCornerShape(10.dp))
-				.padding(8.dp),
+				.background(Pal.black, RoundedCornerShape(10.dp)),
 		) {
-			Text(
-				text.ifBlank { if (live) "shell is up, type something" else "starting the shell" },
-				fontSize = 11.sp,
-				color = if (text.isBlank()) Pal.muted else Pal.text,
-				fontFamily = FontFamily.Monospace,
-				modifier = Modifier.fillMaxSize().verticalScroll(scroll),
-			)
-		}
-
-		Spacer(Modifier.height(6.dp))
-
-		Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-			for ((label, key) in KEYS) {
-				TextButton(onClick = { scope.launch { Terminal.key(key) } }) {
-					Text(label, fontSize = 11.sp, color = Pal.muted)
-				}
-			}
-		}
-
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			OutlinedTextField(
-				input,
-				{ input = it },
-				placeholder = { Text("ls", fontSize = 13.sp) },
-				singleLine = true,
-				modifier = Modifier
-					.weight(1f)
-					.focusRequester(focus),
-				keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-			)
-			Spacer(Modifier.width(8.dp))
-			TextButton(
-				onClick = {
-					if (input.isNotBlank()) {
-						val line = input
-						input = ""
-						scope.launch { Terminal.type(line) }
-					}
-				},
-			) { Text("send", fontWeight = FontWeight.SemiBold) }
+			// TermuxScreen already placed the TerminalView via AndroidView
 		}
 	}
 }
-
-private val KEYS = listOf(
-	"ctrl-c" to "C-c",
-	"ctrl-d" to "C-d",
-	"tab" to "Tab",
-	"esc" to "Escape",
-	"up" to "Up",
-	"down" to "Down",
-)
 
 /* -------------------------------------------------------------------- files */
 

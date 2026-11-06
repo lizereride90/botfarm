@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-	namespace = "io.nexus.farm"
-	compileSdk = 34
+	namespace = "io.botfarm"
+	compileSdk = 36
 
 	defaultConfig {
 		// 10 characters on purpose. the termux binaries we unpack have
@@ -43,6 +43,7 @@ android {
 	compileOptions {
 		sourceCompatibility = JavaVersion.VERSION_17
 		targetCompatibility = JavaVersion.VERSION_17
+		coreLibraryDesugaringEnabled = true
 	}
 
 	kotlinOptions {
@@ -89,6 +90,11 @@ dependencies {
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 	implementation("org.apache.commons:commons-compress:1.26.2")
 	implementation("org.tukaani:xz:1.9")
+
+	// embedded termux terminal emulator + view
+	implementation(project(":third_party:termux-app:terminal-view"))
+
+	coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
 
 	debugImplementation(compose)
 	debugImplementation("androidx.compose.ui:ui-tooling")
