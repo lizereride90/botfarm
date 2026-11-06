@@ -63,6 +63,7 @@ import io.nexus.farm.core.Keys
 import io.nexus.farm.core.OpenCode
 import io.nexus.farm.core.Status
 import io.nexus.farm.core.Terminal
+import io.nexus.farm.service.FarmService
 import io.nexus.farm.ui.Pal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -526,7 +527,7 @@ fun SettingsScreen(app: FarmApp) {
 		Spacer(Modifier.height(8.dp))
 
 		Button(
-			onClick = { app.startService() },
+			onClick = { FarmService.start(app) },
 			colors = ButtonDefaults.buttonColors(containerColor = Pal.red),
 			modifier = Modifier.fillMaxWidth(),
 		) {
